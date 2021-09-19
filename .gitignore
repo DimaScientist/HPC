@@ -6,3 +6,9 @@
 *.fatbin
 */.idea
 */cmake-build-debug
+*/.vs
+*/Debug
+*/*.sln
+*/*.vcxproj
+*/*.vcxproj.user
+*/x64
