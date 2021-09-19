@@ -1,5 +1,4 @@
-﻿
-#include "cuda_runtime.h"
+﻿#include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 
 #include <stdio.h>
@@ -38,7 +37,9 @@ __global__ void mul_matrix_kernel(double* A, double* B, double* C, int n) {
     }
 }
 
-void mul_matrix_gpu(double* A, double* B, double* C, int n, float time) {
+void mul_matrix_gpu(double* A, double* B, double* C, int n) {
+    float time = 0;
+
     dim3 threadsPerBlock(n, n);
     dim3 blocksPerGrid(1, 1);
     if (n * n > 512) {
@@ -60,10 +61,14 @@ void mul_matrix_gpu(double* A, double* B, double* C, int n, float time) {
 
     cudaEventDestroy(start);
     cudaEventDestroy(stop);
+
+    cout << "Время работы программы на GPU (мc): " << time << endl;
 }
 
 void mul_matrix_cpu(double* A, double* B, double* C, int n) {
     // Реализация перемножения матриц на CPU
+    float time = clock();
+
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < n; j++) {
             double sum = 0;
@@ -73,6 +78,10 @@ void mul_matrix_cpu(double* A, double* B, double* C, int n) {
             C[i * n + j] = sum;
         }
     }
+
+    time = clock() - time;
+
+    cout << "Время работы программы на CPU (мc): " << time << endl;
 }
 
 bool equals_matrix(double* A, double* B, int n) {
@@ -99,9 +108,6 @@ int main()
 
     size_t bytes = n * n * sizeof(double);
 
-    float time_cpu = 0;
-    float time_gpu = 0;
-
     double *h_A, *h_B, *h_C_cpu, *h_C_gpu;
 
     cudaMallocHost((void**) &h_A, bytes);
@@ -121,14 +127,12 @@ int main()
     cudaMemcpy(d_A, h_A, bytes, cudaMemcpyDeviceToDevice);
     cudaMemcpy(d_B, h_B, bytes, cudaMemcpyDeviceToDevice);
 
-    mul_matrix_gpu(d_A, d_B, d_C, n, time_gpu);
+    mul_matrix_gpu(d_A, d_B, d_C, n);
 
     cudaMemcpy(h_C_gpu, d_C, bytes, cudaMemcpyDeviceToHost);
     cudaThreadSynchronize();
 
-    time_cpu = clock();
     mul_matrix_cpu(h_A, h_B, h_C_cpu, n);
-    time_cpu = clock() - time_cpu;
 
     if (n < 10) {
         cout << "Результат перемножения матрицы на GPU: " << endl;
@@ -139,10 +143,6 @@ int main()
     else {
         cout << "Результирующие матрицы на GPU и CPU равны? " << equals_matrix(h_C_cpu, h_C_gpu, n) << endl;
     }
-
-    cout << "Время работы программы на GPU (мc): " << time_gpu << endl;
-    cout << "Время работы программы на CPU (мc): " << time_cpu << endl;
-    cout << "Ускорение " << time_cpu / time_gpu << endl;
 
     cudaFreeHost(h_A);
     cudaFreeHost(h_B);
