@@ -7,6 +7,8 @@
 #include <windows.h>
 #include <string>
 
+#define BLOCK_SIZE 16
+
 using namespace std;
 
 void print_matrix(double* matrix, int n) {
@@ -42,11 +44,11 @@ void mul_matrix_gpu(double* A, double* B, double* C, int n) {
 
     dim3 threadsPerBlock(n, n);
     dim3 blocksPerGrid(1, 1);
-    if (n * n > 512) {
-        threadsPerBlock.x = 512;
-        threadsPerBlock.y = 512;
-        blocksPerGrid.x = ceil(double(n) / double(threadsPerBlock.x));
-        blocksPerGrid.y = ceil(double(n) / double(threadsPerBlock.y));
+    if (n >= BLOCK_SIZE) {
+        threadsPerBlock.x = BLOCK_SIZE;
+        threadsPerBlock.y = BLOCK_SIZE;
+        blocksPerGrid.x = ceil((n + threadsPerBlock.x - 1) / threadsPerBlock.x);
+        blocksPerGrid.y = ceil((n + threadsPerBlock.y - 1) / threadsPerBlock.y);
     }
     cudaEvent_t start, stop;
     cudaEventCreate(&start);
