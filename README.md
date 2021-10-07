@@ -5,7 +5,7 @@
 
 * [Перемножение матриц](https://github.com/DimaScientist/HPC/tree/main/MatMul);
 
-* [Сумма элементов векторов]().
+* [Сумма элементов векторов](https://github.com/DimaScientist/HPC/tree/main/VectorSum).
 
 ## Технические характеристики машины:
 
