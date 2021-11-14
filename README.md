@@ -7,6 +7,8 @@
 
 * [Сумма элементов вектора](https://github.com/DimaScientist/HPC/tree/main/VectorSum).
 
+* [Bilateral filter](https://github.com/DimaScientist/HPC/tree/main/Bilateral%20Filter).
+
 ## Технические характеристики машины:
 
 __Видеокарта__: __Nvidia GeForce GTX 1660__
