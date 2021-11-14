@@ -126,8 +126,8 @@ int main()
     cudaMalloc((void**)&d_B, bytes);
     cudaMalloc((void**)&d_C, bytes);
 
-    cudaMemcpy(d_A, h_A, bytes, cudaMemcpyDeviceToDevice);
-    cudaMemcpy(d_B, h_B, bytes, cudaMemcpyDeviceToDevice);
+    cudaMemcpy(d_A, h_A, bytes, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_B, h_B, bytes, cudaMemcpyHostToDevice);
 
     mul_matrix_gpu(d_A, d_B, d_C, n);
 
