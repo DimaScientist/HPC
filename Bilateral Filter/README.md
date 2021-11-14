@@ -22,11 +22,11 @@ Comming soon
 
 Пример входного изображения:
 
-![Входное изображение](https://github.com/DimaScientist/HPC/blob/main/Bilateral-Filter/images/eiffel_640_400.jpg)
+![Входное изображение](https://github.com/DimaScientist/HPC/blob/main/Bilateral%20Filter/images/eiffel_640_400.jpg)
 
 Пример работы программы при *σ = 100*:
 
-![Выходное изображение](https://github.com/DimaScientist/HPC/blob/main/Bilateral-Filter/images/result.jpg)
+![Выходное изображение](https://github.com/DimaScientist/HPC/blob/main/Bilateral%20Filter/images/result.jpg)
 
 
 ## Результаты экспериментов:
@@ -49,15 +49,15 @@ Comming soon
 
 График зависимости времени работы программы на __CPU__ от размера изображения:
 
-![График зависимости времени работы программы на CPU от размера изображения](https://github.com/DimaScientist/HPC/blob/main/Bilateral-Filter/images/cpu.png)
+![График зависимости времени работы программы на CPU от размера изображения](https://github.com/DimaScientist/HPC/blob/main/Bilateral%20Filter/images/cpu.png)
 
 График зависимости времени работы программы на __GPU__ от размера изображения:
 
-![График зависимости времени работы программы на GPU от размера изображения](https://github.com/DimaScientist/HPC/blob/main/Bilateral-Filter/images/gpu.png)
+![График зависимости времени работы программы на GPU от размера изображения](https://github.com/DimaScientist/HPC/blob/main/Bilateral%20Filter/images/gpu.png)
 
 График зависимости __ускорения__ от размера изображения:
 
-![График зависимости ускорения от размера изображения](https://github.com/DimaScientist/HPC/blob/main/Bilateral-Filter/images/boost.png)
+![График зависимости ускорения от размера изображения](https://github.com/DimaScientist/HPC/blob/main/Bilateral%20Filter/images/boost.png)
 
 ## Выводы:
 
