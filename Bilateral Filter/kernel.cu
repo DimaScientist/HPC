@@ -13,16 +13,24 @@
 using namespace std;
 using namespace cv;
 
-float cpu_gauss[64];
 
+// маски Гауссовского размытия
+float cpu_gauss[64];
 __constant__ float gpu_gauss[64];
 
-texture<unsigned char, 2, cudaReadModeElementType> texture_ref;
+// текстурная память
+texture<unsigned char, 2, cudaReadModeElementType> texture_ref; 
 
 void update_gauss_gpu(int radius, double sigma) {
 
+	/*
+	Размытие по Гауссу для GPU
+	*/
+
 	float gauss_array[64];
 	for (int i = 0; i < 2 * radius + 1; i++) {
+
+		// обновление амплитуды Гауссова
 		float x = i - radius;
 		gauss_array[i] = expf(-(x * x) / (2 * sigma * sigma));
 	}
@@ -32,77 +40,115 @@ void update_gauss_gpu(int radius, double sigma) {
 
 void update_gauss_cpu(int radius, float sigma) {
 
+	/*
+	Размытие по Гауссу для CPU
+	*/
+
 	for (int i = 0; i < 2 * radius + 1; i++) {
+		// обновление амплитуды Гауссова
+
 		int x = i - radius;
 		cpu_gauss[i] = exp(-(x * x) / (2 * sigma * sigma));
 	}
 }
 
-__device__ inline double kernel_gaussian(float x, double sigma) {
+__device__ inline double kernel_euclid_distance(float x, double sigma) {
+
+	/*
+	Евклидово расстояние на GPU
+	*/
+
 	return __expf(-(powf(x, 2)) / (2 * powf(sigma, 2)));
 }
 
 float euclid_distance(float x, double sigma) {
+
+	/*
+	Евклидово расстояние на CPU
+	*/
+
 	return exp(-(pow(x, 2)) / (2 * pow(sigma, 2)));
 }
 
-__global__ void kernel_bilateral_filter(unsigned char* input, unsigned char* output, int width, int height,
-	int filter_radius, double sigma)
-{
+__global__ void kernel_bilateral_filter(unsigned char* input, unsigned char* output, int width, int height, int filter_radius, double sigma) {
+
+	/*
+	Kernel фильтра
+	*/
+
+	// вычисляются "координаты" нити
 	int x = blockIdx.x * BLOCK_SIZE + threadIdx.x;
 	int y = blockIdx.y * BLOCK_SIZE + threadIdx.y;
 
+	// проверка на то, что нить обрабатывает пиксель внутри картинки
 	if ((x < width) && (y < height)) {
-		double t = 0;
-		double sumFactor = 0;
-		unsigned char center = tex2D(texture_ref, x, y);
 
+		double h = 0;
+		double k = 0;
+		unsigned char center = tex2D(texture_ref, x, y); // сохраним координаты пикселя, относительно которого будет производится размытие
+
+		// для всех пискселей, находящихся внутри радиуса, где содержится маска
 		for (int i = -filter_radius; i <= filter_radius; i++) {
 			for (int j = -filter_radius; j <= filter_radius; j++) {
 
-				unsigned char curPix = tex2D(texture_ref, x + j, y + i);
+				unsigned char curr_pixel = tex2D(texture_ref, x + j, y + i); // выберем пиксель внутри радиуса
 
-				double factor = (gpu_gauss[i + filter_radius] * gpu_gauss[j + filter_radius]) * kernel_gaussian(center - curPix, sigma);
+				double factor = gpu_gauss[i + filter_radius] * gpu_gauss[j + filter_radius] * kernel_euclid_distance(center - curr_pixel, sigma); // вычисляем коэффициент Гауссова размытия
 
-				t += factor * curPix;
-				sumFactor += factor;
+				// вычисляем новую яркость и записываем коэффициент
+				h += factor * curr_pixel;
+				k += factor;
 			}
 		}
-		output[y * width + x] = t / sumFactor;
+
+		// проводим нормализацию
+		output[y * width + x] = h / k;
 	}
 }
 
 void bilateral_filter_gpu(const Mat& input, Mat& output, int filter_radius, double sigma) {
+	/*
+	Реализация фильтра на GPU
+	*/
+
 	cudaEvent_t start, stop;
 	float time;
 	cudaEventCreate(&start);
 	cudaEventCreate(&stop);
 
-	int gray_size = input.step * input.rows;
+	int image_size = input.cols * input.rows; // сохраним размер рисунка
 
 	size_t pitch;
-	unsigned char* d_input = NULL;
+
+	// выделим переменные для входного и выходного изображения для оработки на GPU
+	unsigned char* d_input = NULL; 
 	unsigned char* d_output;
 
+	// инициируем маску Гауссова размытия
 	update_gauss_gpu(filter_radius, sigma);
 
-	// Allocate device memory
+	// выделим место для двумерного массива изображения
 	cudaMallocPitch(&d_input, &pitch, sizeof(unsigned char) * input.step, input.rows);
+
+	// запишем в буфер значения значения яркостей на картинке, привязав указатель
 	cudaMemcpy2D(d_input, pitch, input.ptr(), sizeof(unsigned char) * input.step, sizeof(unsigned char) * input.step, input.rows, cudaMemcpyHostToDevice);
-	cudaBindTexture2D(0, texture_ref, d_input, input.step, input.rows, pitch);
-	cudaMalloc<unsigned char>(&d_output, gray_size);
 
-	dim3 block(BLOCK_SIZE, BLOCK_SIZE);
+	// привяжем ссылки на текстуры к их буферам
+	cudaBindTexture2D(NULL, texture_ref, d_input, input.step, input.rows, pitch);
+	cudaMalloc<unsigned char>(&d_output, image_size);
 
-	dim3 grid((input.cols + block.x - 1) / block.x, (input.rows + block.y - 1) / block.y);
+	// зададим количество нитей и блоков
+	dim3 threadsPerBlock(BLOCK_SIZE, BLOCK_SIZE);
+	dim3 blocksPerGrid((input.cols + threadsPerBlock.x - 1) / threadsPerBlock.x, (input.rows + threadsPerBlock.y - 1) / threadsPerBlock.y);
 
 	cudaEventRecord(start, 0);
 
-	kernel_bilateral_filter << <grid, block >> > (d_input, d_output, input.cols, input.rows, filter_radius, sigma);
+	kernel_bilateral_filter <<< blocksPerGrid, threadsPerBlock >>> (d_input, d_output, input.cols, input.rows, filter_radius, sigma);
 	cudaEventRecord(stop, 0);
 	cudaEventSynchronize(stop);
 
-	cudaMemcpy(output.ptr(), d_output, gray_size, cudaMemcpyDeviceToHost);
+	// передадим указателю на новое изображение ссылку на буфер результирующего
+	cudaMemcpy(output.ptr(), d_output, image_size, cudaMemcpyDeviceToHost);
 
 	cudaFree(d_input);
 	cudaFree(d_output);
@@ -111,43 +157,43 @@ void bilateral_filter_gpu(const Mat& input, Mat& output, int filter_radius, doub
 	cout << "Время GPU: " << time << " мc" << endl;
 }
 
-// CPU
 void bilateral_filter_cpu(unsigned char* input, unsigned char* output, int width, int height, int filter_radius, float sigma) {
-	update_gauss_cpu(filter_radius, sigma);
 
-	float domainDist, colorDist, factor;
+	/*
+	Реализация фильтра на CPU
+	*/
+
+	update_gauss_cpu(filter_radius, sigma);
 
 	for (int y = 0; y < height; y++) {
 		for (int x = 0; x < width; x++) {
-			float t = 0.0f;
-			float sum = 0.0f;
+			float h = 0.0f;
+			float k = 0.0f;
 
 			for (int i = -filter_radius; i <= filter_radius; i++) {
-				int neighborY = y + i;
-				if (neighborY < 0) {
-					neighborY = 0;
+				int neighbor_y = y + i;
+				if (neighbor_y < 0) {
+					neighbor_y = 0;
 				}
-				else if (neighborY >= height) {
-					neighborY = height - 1;
+				else if (neighbor_y >= height) {
+					neighbor_y = height - 1;
 				}
 				for (int j = -filter_radius; j <= filter_radius; j++) {
-					domainDist = cpu_gauss[filter_radius + i] * cpu_gauss[filter_radius + j];
 
-					int neighborX = x + j;
+					int neighbor_x = x + j;
 
-					if (neighborX < 0) {
-						neighborX = 0;
+					if (neighbor_x < 0) {
+						neighbor_x = 0;
 					}
-					else if (neighborX >= width) {
-						neighborX = width - 1;
+					else if (neighbor_x >= width) {
+						neighbor_x = width - 1;
 					}
-					colorDist = euclid_distance(input[neighborY * width + neighborX] - input[y * width + x], sigma);
-					factor = domainDist * colorDist;
-					sum += factor;
-					t += factor * input[neighborY * width + neighborX];
+					float factor = cpu_gauss[filter_radius + i] * cpu_gauss[filter_radius + j] * euclid_distance(input[neighbor_y * width + neighbor_x] - input[y * width + x], sigma);
+					k += factor;
+					h += factor * input[neighbor_y * width + neighbor_x];
 				}
 			}
-			output[y * width + x] = t / sum;
+			output[y * width + x] = h / k;
 		}
 	}
 }
@@ -160,8 +206,7 @@ int main(int argc, char** argv)
 	string path;
 	cin >> path;
 
-
-	cout << "Введите стандартное отклонение, $/sigma$: ";
+	cout << "Введите стандартное отклонение: ";
 
 	float sigma;
 	cin >> sigma;
@@ -179,7 +224,12 @@ int main(int argc, char** argv)
 	cout << "Время CPU: " << (stop_s - start_s) / double(CLOCKS_PER_SEC) * 1000 << " мс" << endl;
 	cout << "Размеры изображения: " << input_image.rows << " x " << input_image.cols << endl;
 
-	imshow("Результирующее изображение", output_gpu);
+	/*
+	imshow("Результирующее изображение CPU", output_cpu);
+	waitKey(30);
+	*/
+
+	imshow("Результирующее изображение GPU", output_gpu);
 	waitKey(0);
 
 	return 0;
