@@ -5,7 +5,7 @@
 
 * [Перемножение матриц](https://github.com/DimaScientist/HPC/tree/main/MatMul);
 
-* [Сумма элементов вектора](https://github.com/DimaScientist/HPC/tree/main/VectorSum).
+* [Сумма элементов вектора](https://github.com/DimaScientist/HPC/tree/main/VectorSum);
 
 * [Bilateral filter](https://github.com/DimaScientist/HPC/tree/main/Bilateral%20Filter).
 
