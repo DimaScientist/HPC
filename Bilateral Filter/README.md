@@ -15,8 +15,47 @@
 
 ## Описание работы программы на CUDA:
 
-Comming soon
+[Теория](https://github.com/PavelYakimov/HPC-SamaraUniversity-Fall-2021/blob/main/bilateral.pdf)
 
+Как было отмечено, распараллеливание заключается в том, чтобы каждая нить высчитывала новую яркость своего пикселя.
+
+Для этого сначала высчитывались координаты нити и соответствующего пикселя:
+
+```
+int x = blockIdx.x * BLOCK_SIZE + threadIdx.x;
+int y = blockIdx.y * BLOCK_SIZE + threadIdx.y;
+```
+
+Проверялось, данный пиксель находится внутри изображения. Если да, то он брался в качестве центрального пикселя. Для этого использовалась двумерная текстура, объявленная с помощью __tex2D__:
+
+```
+unsigned char center = tex2D(texture_ref, x, y);
+```
+
+Для этого пикселя рассматривались соседи, находящиеся в определенном радиусе __filter_radius__. Относительно них вычислялись коэффициенты Гауссова размытия и новую яркость:
+
+```
+for (int i = -filter_radius; i <= filter_radius; i++) {
+	 for (int j = -filter_radius; j <= filter_radius; j++) {
+  
+   unsigned char curr_pixel = tex2D(texture_ref, x + j, y + i);
+   
+   double factor = gpu_gauss[i + filter_radius] 
+                    * gpu_gauss[j + filter_radius] 
+                    * kernel_euclid_distance(center - curr_pixel, sigma);
+                    
+    h += factor * curr_pixel;
+    k += factor;
+  }
+}
+
+```
+
+В конце, результирующей яркостью для пикселя будет нормализванная яркость относительно соседей внутри радиуса:
+
+```
+output[y * width + x] = h / k;
+```
 
 ## Пример работы программы:
 
