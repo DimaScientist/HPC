@@ -7,7 +7,9 @@
 
 * [Сумма элементов вектора](https://github.com/DimaScientist/HPC/tree/main/VectorSum);
 
-* [Bilateral filter](https://github.com/DimaScientist/HPC/tree/main/Bilateral%20Filter).
+* [Bilateral filter](https://github.com/DimaScientist/HPC/tree/main/Bilateral%20Filter);
+
+* [Salt and papper](https://github.com/DimaScientist/HPC/tree/main/Salt%20and%20Papper).
 
 ## Технические характеристики машины:
 
