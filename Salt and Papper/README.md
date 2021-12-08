@@ -55,7 +55,7 @@ if ((x < height) && (y < width)) {
 
 В ходе создания программы на CUDA была использована текстурная память ```texture<unsigned int, cudaTextureType2D, cudaReadModeElementType> texture_ref```, которая привязывалась к исходному изображению.
 
-Подробнее можно посмотреть на примеры работы и реализацию можно в файле [Median filter.ipynb](https://github.com/DimaScientist/HPC/blob/main/Salt%20and%20Papper/Median%20filter.ipynb).
+Подробнее посмотреть на примеры работы и реализацию можно в файле [Median filter.ipynb](https://github.com/DimaScientist/HPC/blob/main/Salt%20and%20Papper/Median%20filter.ipynb).
 
 
 ## Пример работы программы:
